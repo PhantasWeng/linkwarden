@@ -1,21 +1,35 @@
-version: "3.5"
 services:
-  postgres:
+  postgres16:
+    container_name: linkwarden-postgres
     image: postgres:16-alpine
     env_file: .env
     restart: always
     volumes:
       - ./pgdata:/var/lib/postgresql/data
   linkwarden:
+    container_name: linkwarden
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres16:5432/postgres
     restart: always
     # build: . # uncomment this line to build from source
     image: ghcr.io/linkwarden/linkwarden:latest # comment this line to build from source
-    ports:
-      - 3000:3000
+    # ports:
+      # - 3000:3000
     volumes:
       - ./data:/data/data
     depends_on:
-      - postgres
+      - postgres16
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.linkwarden.rule=Host(`link.phant.as`)"
+      - "traefik.http.routers.linkwarden.entrypoints=websecure"
+      # - "traefik.http.routers.linkwarden.middlewares=forward-auth"
+      - "traefik.http.routers.linkwarden.tls.certresolver=netim"
+      - "traefik.http.routers.linkwarden.service=linkwarden-service"
+      - "traefik.http.services.linkwarden-service.loadbalancer.server.port=3000"
+
+networks:
+  default:
+    name: traefik_net
+    external: true
